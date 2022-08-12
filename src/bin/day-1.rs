@@ -132,5 +132,7 @@ fn main() {
         4461, 4465, 4478, 4479, 4450, 4452, 4454, 4445, 4447, 4459, 4482,
     ];
     let increments = day_1::count_incrment(&measurements);
-    println!("Number of increments: {increments}");
+    println!("day_1_a: {increments}");
+    let increments = day_1::count_incrment_windowed(&measurements, 3);
+    println!("day_1_b: {increments}");
 }
