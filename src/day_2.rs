@@ -1,79 +1,100 @@
 use std::str::FromStr;
 
-pub enum Direction {
-    Forward,
-    Down,
-    Up,
+pub enum Course {
+    Forward(usize),
+    Down(usize),
+    Up(usize),
 }
-pub struct Vector {
-    direction: Direction,
-    len: usize,
+
+#[derive(Default)]
+pub struct SubMarine {
+    aim: usize,
+    depth: usize,
+    hpos: usize,
+}
+
+impl SubMarine {
+    pub fn advance(&mut self, course: &Course) {
+        match course {
+            Course::Forward(len) => {
+                self.hpos += len;
+                self.depth += self.aim * len;
+            }
+            Course::Down(len) => self.aim += len,
+            Course::Up(len) => self.aim -= len,
+        }
+    }
+    pub fn advance_without_aim(&mut self, course: &Course) {
+        match course {
+            Course::Forward(len) => self.hpos += len,
+            Course::Down(len) => self.depth += len,
+            Course::Up(len) => self.depth -= len,
+        }
+    }
+    pub fn final_destination(&self) -> usize {
+        self.hpos * self.depth
+    }
 }
 
 #[derive(Debug)]
 pub enum VectorParseError {
-    InvalidWord(String),
-    NoDirection,
-    NoLength,
+    InvalidDirection(String),
+    InvalidLength(String),
+    Invalidline(String),
 }
 
-impl FromStr for Vector {
+impl FromStr for Course {
     type Err = VectorParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut line = s.trim().split(' ');
-        let direction = if let Some(word) = line.next() {
-            match word {
-                "forward" => Direction::Forward,
-                "down" => Direction::Down,
-                "up" => Direction::Up,
-                _ => return Err(VectorParseError::InvalidWord(word.to_string())),
+        if let Some((dir, len_str)) = s.trim().split_once(' ') {
+            if let Ok(len) = len_str.parse::<usize>() {
+                match dir {
+                    "forward" => Ok(Course::Forward(len)),
+                    "down" => Ok(Course::Down(len)),
+                    "up" => Ok(Course::Up(len)),
+                    _ => Err(VectorParseError::InvalidDirection(dir.to_string())),
+                }
+            } else {
+                Err(VectorParseError::Invalidline(len_str.to_string()))
             }
         } else {
-            return Err(VectorParseError::NoDirection);
-        };
-        let len = if let Some(word) = line.next() {
-            word.parse()
-                .map_err(|_| VectorParseError::InvalidWord(word.to_string()))?
-        } else {
-            return Err(VectorParseError::NoLength);
-        };
-        Ok(Self { direction, len })
-    }
-}
-
-impl Vector {
-    pub fn new(dir: Direction, len: usize) -> Self {
-        Self {
-            direction: dir,
-            len,
+            Err(VectorParseError::Invalidline(s.to_string()))
         }
     }
-}
-pub fn final_destination(moves: &[Vector]) -> usize {
-    let (x, y) = moves
-        .iter()
-        .fold::<(usize, usize), _>((0, 0), |acc, mov| match mov.direction {
-            Direction::Forward => (acc.0 + mov.len, acc.1),
-            Direction::Down => (acc.0, acc.1 + mov.len),
-            Direction::Up => (acc.0, acc.1 - mov.len),
-        });
-    x * y
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn day2_example() {
+    fn move_without_aim() {
         let moves = [
-            Vector::new(Direction::Forward, 5),
-            Vector::new(Direction::Down, 5),
-            Vector::new(Direction::Forward, 8),
-            Vector::new(Direction::Up, 3),
-            Vector::new(Direction::Down, 8),
-            Vector::new(Direction::Forward, 2),
+            Course::Forward(5),
+            Course::Down(5),
+            Course::Forward(8),
+            Course::Up(3),
+            Course::Down(8),
+            Course::Forward(2),
         ];
-        assert_eq!(final_destination(&moves), 150);
+        let mut sm = SubMarine::default();
+        moves
+            .iter()
+            .for_each(|movement| sm.advance_without_aim(movement));
+        assert_eq!(sm.final_destination(), 150);
+    }
+    #[test]
+    fn move_with_aim() {
+        let moves = [
+            Course::Forward(5),
+            Course::Down(5),
+            Course::Forward(8),
+            Course::Up(3),
+            Course::Down(8),
+            Course::Forward(2),
+        ];
+        let mut sm = SubMarine::default();
+        moves.iter().for_each(|movement| sm.advance(movement));
+        assert_eq!(sm.final_destination(), 900);
     }
 }
